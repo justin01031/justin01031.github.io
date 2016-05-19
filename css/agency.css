@@ -230,7 +230,7 @@ header {
   color: white;
 }
 header .intro-text {
-  padding-top: 50px;
+  padding-top: 100px;
   padding-bottom: 50px;
 }
 header .intro-text .skills {
@@ -274,9 +274,13 @@ header .intro-text .name {
 section {
   padding: 100px 0;
 }
+@media (min-width: 768px) {
+  section {
+    padding: 70px 0;
+  }
+}
 section h2.section-heading {
   font-size: 40px;
-  margin-top: 0;
   margin-bottom: 15px;
 }
 section h3.section-subheading {
@@ -291,10 +295,7 @@ section h3.section-subheading {
   font-weight: 400;
 
 }
-@media (min-width: 768px) {
-  section {
-  }
-}
+
 .service-heading {
   margin: 15px 0;
   text-transform: none;

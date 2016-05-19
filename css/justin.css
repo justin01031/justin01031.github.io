@@ -12,12 +12,16 @@
    color: #777;
    line-height: 1.75; 
 }
+
+#aboutme .container,#portfolio .container, #contact .container {
+  border: 5px solid #434343;
+  border-radius: 10px;
+}
+#myresume{
+  margin-bottom: 20px;
 }
 
 
-.navbar{
-	background: #434343
-}
 .timeline p {
     font-size: 13px;
 }
@@ -47,7 +51,7 @@ header{
 header img {
     display: block;
     border-radius: 10px;
-    margin: 0 auto 20px;
+    margin: 10px auto 10px;
 }
 
 
