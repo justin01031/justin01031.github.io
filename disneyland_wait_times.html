@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Disneyland Wait Times</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      background: #1c1c1e;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #2c2c2e;
+      padding: 12px 16px 8px;
+      border-bottom: 1px solid #3a3a3c;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    #current-time {
+      font-size: 13px;
+      color: #ebebf599;
+      margin-top: 2px;
+    }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #3a3a3c;
+      color: #ebebf5cc;
+      transition: all 0.2s;
+    }
+
+    .filter-btn.active {
+      background: #0a84ff;
+      color: #fff;
+    }
+
+    .jump-btn {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #ff9f0a;
+      color: #000;
+      margin-left: auto;
+    }
+
+    .legend {
+      display: flex;
+      gap: 10px;
+      padding: 8px 16px;
+      overflow-x: auto;
+      background: #2c2c2e;
+      border-bottom: 1px solid #3a3a3c;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #ebebf5aa;
+      white-space: nowrap;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+      border-collapse: collapse;
+      min-width: max-content;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #2c2c2e;
+      padding: 8px 10px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #ebebf5aa;
+      border-bottom: 1px solid #3a3a3c;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    thead th:first-child {
+      left: 0;
+      z-index: 20;
+      text-align: left;
+      min-width: 180px;
+      max-width: 180px;
+      background: #2c2c2e;
+    }
+
+    thead th.now-col {
+      background: #ff9f0a22;
+      color: #ff9f0a;
+      border-bottom: 2px solid #ff9f0a;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #2c2c2e;
+    }
+
+    tbody tr:hover {
+      background: #2c2c2e55;
+    }
+
+    tbody tr.hidden {
+      display: none;
+    }
+
+    td {
+      padding: 7px 10px;
+      text-align: center;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    td:first-child {
+      position: sticky;
+      left: 0;
+      background: #1c1c1e;
+      text-align: left;
+      font-weight: 500;
+      padding-left: 16px;
+      min-width: 180px;
+      max-width: 180px;
+      white-space: normal;
+      line-height: 1.3;
+      z-index: 5;
+      border-right: 1px solid #3a3a3c;
+    }
+
+    tbody tr:hover td:first-child {
+      background: #2c2c2e;
+    }
+
+    .attraction-name {
+      display: block;
+    }
+
+    .toddler-badge {
+      display: inline-block;
+      font-size: 10px;
+      background: #30d158;
+      color: #000;
+      border-radius: 4px;
+      padding: 1px 5px;
+      margin-top: 2px;
+      font-weight: 700;
+    }
+
+    /* Wait time cell colors */
+    .w-low    { background: #1a3a2a; color: #30d158; font-weight: 600; border-radius: 6px; }
+    .w-med    { background: #3a3010; color: #ffd60a; font-weight: 600; border-radius: 6px; }
+    .w-high   { background: #3a1a0a; color: #ff9f0a; font-weight: 600; border-radius: 6px; }
+    .w-vhigh  { background: #3a0a0a; color: #ff453a; font-weight: 600; border-radius: 6px; }
+    .w-na     { color: #3a3a3c; font-size: 11px; }
+    .w-status { color: #636366; font-size: 11px; font-style: italic; }
+    .w-open   { color: #30d158; font-size: 11px; }
+    .w-refurb { color: #636366; font-size: 11px; }
+
+    td.now-col {
+      background: #ff9f0a11;
+      border-left: 1px solid #ff9f0a44;
+      border-right: 1px solid #ff9f0a44;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #636366;
+      padding: 10px 16px 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: #1c1c1e;
+    }
+
+    .section-label td {
+      position: sticky;
+      left: 0;
+      background: #1c1c1e;
+      border-right: none;
+      color: #636366;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Parades & Shows */
+    .parades-section {
+      padding: 12px 16px;
+      background: #2c2c2e;
+      border-bottom: 1px solid #3a3a3c;
+    }
+
+    .parades-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #ebebf5aa;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .parade-cards {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .parade-card {
+      background: #3a3a3c;
+      border-radius: 10px;
+      padding: 8px 12px;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .parade-card.upcoming {
+      background: #1a2a3a;
+      border: 1px solid #0a84ff55;
+    }
+
+    .parade-card.now {
+      background: #1a3a1a;
+      border: 1px solid #30d15855;
+    }
+
+    .parade-card.past {
+      opacity: 0.4;
+    }
+
+    .parade-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .parade-time {
+      font-size: 13px;
+      color: #ebebf5cc;
+    }
+
+    .parade-status {
+      font-size: 11px;
+      margin-top: 3px;
+      font-weight: 600;
+    }
+
+    .status-upcoming { color: #0a84ff; }
+    .status-now      { color: #30d158; }
+    .status-past     { color: #636366; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🎢 Disneyland Wait Times</h1>
+  <div id="current-time">Loading...</div>
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all')">All Rides</button>
+    <button class="filter-btn" onclick="setFilter('toddler')">🧒 Toddler</button>
+    <button class="jump-btn" onclick="jumpToNow()">Jump to Now</button>
+  </div>
+</header>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#30d158"></div> ≤10 min</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ffd60a"></div> 11–25 min</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ff9f0a"></div> 26–40 min</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ff453a"></div> 41+ min</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#636366"></div> Closed/N/A</div>
+</div>
+
+<div class="parades-section">
+  <div class="parades-title">🎉 Parades &amp; Shows — Fri Mar 27</div>
+  <div class="parade-cards" id="paradeCards"></div>
+</div>
+
+<div class="table-container" id="tableContainer">
+  <table id="mainTable">
+    <thead id="tableHead"></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<script>
+const times = [
+  "08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30",
+  "12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30",
+  "16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30",
+  "20:00","20:30","21:00","21:30","22:00","22:30","23:00"
+];
+
+const toddlerRides = new Set([
+  "Mickey & Minnie's Runaway Railway",
+  "Dumbo the Flying Elephant",
+  "it's a small world",
+  "Peter Pan's Flight",
+  "Casey Jr. Circus Train",
+  "The Many Adventures of Winnie the Pooh",
+  "Storybook Land Canal Boats",
+  "Disneyland Railroad",
+  "King Arthur Carrousel",
+  "Autopia",
+  "Finding Nemo Submarine Voyage",
+  "Alice in Wonderland"
+]);
+
+const rides = [
+  { name: "Mickey & Minnie's Runaway Railway", data: [5,5,19,48,38,31,48,42,48,43,45,43,40,58,40,44,45,48,52,45,52,48,39,39,45,"N/A","N/A","N/A",25,20,20] },
+  { name: "Roger Rabbit's Car Toon Spin",       data: [5,5,12,35,42,50,50,34,48,58,44,45,41,53,53,55,47,42,58,37,25,40,43,35,20,"N/A","N/A","N/A","N/A",5,5] },
+  { name: "Haunted Mansion",                     data: [13,13,35,55,32,40,37,47,45,38,38,35,47,35,32,40,35,35,38,26,42,55,38,50,35,32,30,30,18,13,13] },
+  { name: "Peter Pan's Flight",                  data: [39,42,32,38,42,33,40,32,35,35,35,35,35,30,25,25,35,35,35,35,36,38,35,38,"N/A","N/A","N/A","N/A",30,30,30] },
+  { name: "Pirates of the Caribbean",            data: [5,5,19,25,34,39,32,32,40,37,32,33,35,38,30,30,26,38,32,32,26,35,27,35,24,23,20,20,20,20,20] },
+  { name: "Chip 'n' Dale's GADGETcoaster",       data: [5,5,7,15,37,23,35,35,22,33,32,21,28,35,35,35,15,28,37,37,28,32,39,30,30,"N/A","N/A","N/A",10,10,10] },
+  { name: "Buzz Lightyear Astro Blasters",       data: [5,5,11,27,28,38,32,28,28,36,22,27,30,30,24,23,27,33,25,30,39,34,32,33,23,24,25,18,23,5,5] },
+  { name: "Dumbo the Flying Elephant",           data: [11,30,30,30,30,30,30,30,30,30,30,30,20,25,25,25,16,25,25,23,27,30,30,30,28,25,22,10,10,10,10] },
+  { name: "Autopia",                             data: [3,6,15,40,22,30,21,43,20,38,12,22,25,25,18,24,15,13,32,25,22,34,21,37,28,25,30,30,30,15,15] },
+  { name: "Alice in Wonderland",                 data: [10,10,17,25,26,25,25,28,30,20,20,20,21,22,25,25,20,22,35,35,20,28,30,22,25,"N/A","N/A","N/A",25,25,15] },
+  { name: "Astro Orbitor",                       data: [6,10,10,27,30,32,25,28,42,30,30,25,20,20,20,12,20,25,18,15,25,22,30,30,30,15,35,16,12,20,20] },
+  { name: "Mr. Toad's Wild Ride",                data: [5,8,10,23,23,20,16,25,27,19,21,20,15,23,18,17,18,20,20,23,25,25,25,25,25,25,"N/A","N/A",25,22,5] },
+  { name: "it's a small world",                  data: [5,5,5,14,25,7,22,25,26,20,20,14,22,18,18,15,15,15,15,11,5,24,12,25,50,50,50,15,15,15,5] },
+  { name: "Finding Nemo Submarine Voyage",       data: [5,5,5,16,31,23,30,30,23,20,22,25,20,20,25,21,38,22,15,13,20,"N/A",20,12,9,15,15,15,15,10,5] },
+  { name: "Snow White's Enchanted Wish",         data: [5,9,10,14,20,18,20,23,22,16,22,10,19,20,20,13,18,21,15,23,20,15,21,20,20,20,"N/A","N/A",20,18,5] },
+  { name: "Disneyland Monorail",                 data: ["Open","Open","Open","Open","Open","Open","N/A","N/A","N/A","N/A","N/A","N/A","N/A","N/A","N/A","N/A","N/A","N/A","N/A","N/A","N/A","N/A","N/A","N/A",15,15,"N/A",15,15,15,15] },
+  { name: "Storybook Land Canal Boats",          data: [9,25,15,12,18,15,20,12,17,10,5,5,5,12,10,6,10,10,12,10,18,22,20,20,22,25,20,15,15,12,15] },
+  { name: "Pinocchio's Daring Journey",          data: [5,5,10,13,20,12,10,20,22,25,22,10,13,18,10,10,10,12,15,15,15,15,15,15,15,5,"N/A","N/A",5,5,5] },
+  { name: "The Many Adventures of Winnie the Pooh", data: [5,5,5,5,10,22,30,20,"N/A",8,9,17,18,20,12,5,12,14,15,15,15,20,28,25,12,5,5,5,5,5,5] },
+  { name: "Casey Jr. Circus Train",              data: [5,5,5,5,6,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,12,18,20,20,20,15,10,10,10,10] },
+  { name: "Mad Tea Party",                       data: [5,5,5,10,13,10,18,15,12,15,13,7,5,5,5,5,5,5,5,10,10,10,15,19,15,7,5,5,5,5,5] },
+  { name: "King Arthur Carrousel",               data: [5,5,5,5,11,17,12,10,10,10,10,10,7,5,5,5,5,5,5,5,5,5,5,13,15,8,"N/A","N/A",5,5,5] },
+  { name: "Disneyland Railroad",                 data: [5,5,5,5,5,5,5,8,10,10,10,10,10,11,12,10,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5] },
+  { name: "Davy Crockett's Explorer Canoes",     data: ["Closed","Closed","Closed","Closed",5,5,5,5,5,6,8,5,5,5,5,5,5,5,5,"Closed","Closed","Closed","Closed","Closed","Closed","Closed","Closed","Closed","Closed","Closed","Closed"] },
+  { name: "Jungle Cruise",                       data: ["Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb","Refurb"] },
+];
+
+let currentFilter = 'all';
+let nowColIndex = -1;
+
+function getNowColIndex() {
+  const now = new Date();
+  const hhmm = now.getHours() * 60 + now.getMinutes();
+  let best = 0, bestDiff = Infinity;
+  times.forEach((t, i) => {
+    const [h, m] = t.split(':').map(Number);
+    const diff = Math.abs(h * 60 + m - hhmm);
+    if (diff < bestDiff) { bestDiff = diff; best = i; }
+  });
+  return best;
+}
+
+function cellClass(val) {
+  if (val === "N/A") return 'w-na';
+  if (val === "Open") return 'w-open';
+  if (val === "Refurb" || val === "Closed" || val === "Down") return 'w-refurb';
+  const n = parseInt(val);
+  if (isNaN(n)) return 'w-na';
+  if (n <= 10) return 'w-low';
+  if (n <= 25) return 'w-med';
+  if (n <= 40) return 'w-high';
+  return 'w-vhigh';
+}
+
+function cellDisplay(val) {
+  if (val === "N/A") return '–';
+  if (val === "Open") return '✓';
+  if (val === "Refurb") return 'Refurb';
+  if (val === "Closed") return 'Closed';
+  if (val === "Down") return 'Down';
+  const n = parseInt(val);
+  if (isNaN(n)) return val;
+  return n + 'm';
+}
+
+function buildTable() {
+  nowColIndex = getNowColIndex();
+
+  // Header
+  const thead = document.getElementById('tableHead');
+  let hRow = '<tr><th>Attraction</th>';
+  times.forEach((t, i) => {
+    const isNow = i === nowColIndex;
+    hRow += `<th class="${isNow ? 'now-col' : ''}" id="th-${i}">${isNow ? '⬇ ' : ''}${t}</th>`;
+  });
+  hRow += '</tr>';
+  thead.innerHTML = hRow;
+
+  // Body
+  const tbody = document.getElementById('tableBody');
+  let html = '';
+  rides.forEach(ride => {
+    const isToddler = toddlerRides.has(ride.name);
+    const hidden = (currentFilter === 'toddler' && !isToddler) ? 'hidden' : '';
+    html += `<tr class="${hidden}" data-toddler="${isToddler}">`;
+    html += `<td><span class="attraction-name">${ride.name}</span></td>`;
+    ride.data.forEach((val, i) => {
+      const isNow = i === nowColIndex;
+      html += `<td class="${cellClass(val)}${isNow ? ' now-col' : ''}">${cellDisplay(val)}</td>`;
+    });
+    html += '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.querySelectorAll('#tableBody tr').forEach(row => {
+    if (f === 'toddler' && row.dataset.toddler === 'false') {
+      row.classList.add('hidden');
+    } else {
+      row.classList.remove('hidden');
+    }
+  });
+}
+
+function jumpToNow() {
+  const th = document.getElementById(`th-${nowColIndex}`);
+  if (th) th.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+}
+
+function updateTime() {
+  const now = new Date();
+  const opts = { weekday: 'short', hour: '2-digit', minute: '2-digit' };
+  document.getElementById('current-time').textContent =
+    'Now: ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+buildTable();
+updateTime();
+jumpToNow();
+setInterval(() => { updateTime(); buildTable(); }, 60000);
+
+// Parades & Shows
+const parades = [
+  { name: "The Celebrate Happy Cavalcade",      time: "1:30 PM",  hour: 13, min: 30 },
+  { name: "The Celebrate Happy Cavalcade",      time: "2:45 PM",  hour: 14, min: 45 },
+  { name: "Paint the Night",                    time: "8:30 PM",  hour: 20, min: 30 },
+  { name: "Fantasmic!",                         time: "9:00 PM",  hour: 21, min:  0 },
+  { name: "Wondrous Journeys with Fireworks",   time: "9:30 PM",  hour: 21, min: 30 },
+  { name: "Fantasmic!",                         time: "10:30 PM", hour: 22, min: 30 },
+  { name: "Paint the Night",                    time: "10:30 PM", hour: 22, min: 30 },
+];
+
+function buildParades() {
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const container = document.getElementById('paradeCards');
+  container.innerHTML = parades.map(p => {
+    const pMins = p.hour * 60 + p.min;
+    const diff = pMins - nowMins;
+    let statusClass, statusText, cardClass;
+    if (diff < -30) {
+      statusClass = 'status-past'; statusText = 'Ended'; cardClass = 'past';
+    } else if (diff < 0) {
+      statusClass = 'status-now'; statusText = '🎉 Happening now!'; cardClass = 'now';
+    } else if (diff <= 60) {
+      statusClass = 'status-upcoming'; statusText = `In ${diff} min`; cardClass = 'upcoming';
+    } else {
+      const h = Math.floor(diff / 60), m = diff % 60;
+      statusClass = 'status-upcoming';
+      statusText = `In ${h}h ${m > 0 ? m + 'm' : ''}`;
+      cardClass = 'upcoming';
+    }
+    return `<div class="parade-card ${cardClass}">
+      <div class="parade-name">${p.name}</div>
+      <div class="parade-time">🕐 ${p.time}</div>
+      <div class="parade-status ${statusClass}">${statusText}</div>
+    </div>`;
+  }).join('');
+}
+
+buildParades();
+setInterval(buildParades, 30000);
+</script>
+</body>
+</html>
